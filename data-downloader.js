@@ -79,9 +79,10 @@ var downloadFile = exports.downloadFile = function (url, file, callback) {
 };
 
 var download = exports.download = function () {
-	for (var i = 0; i < data.length; i++) {
+	for (let i = 0; i < data.length; i++) {
 		downloadFile(data[i].url, data[i].file, function (s, err) {
 			if (s) return;
+			console.log(i, data[i]);
 			error("Data download failed: " + data[i].file + "\n" + err.message);
 			errlog(err.stack);
 		});

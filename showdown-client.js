@@ -337,11 +337,14 @@ var Client = (function () {
 		var cmds = [];
 		var room;
 		for (var i = 0; i < rooms.length; i++) {
-			room = toId(rooms[i]);
+			room = toRoomid(rooms[i]);
 			if (this.rooms[room]) continue;
 			cmds.push('|/join ' + room);
 		}
-		if (cmds.length) return this.send(cmds);
+		if (cmds.length) {
+			SecurityLog.log("Attempting roomjoin: " + cmds.join(' '));
+			return this.send(cmds);
+		}
 	};
 
 	Client.prototype.leaveRooms = function (rooms) {
@@ -440,7 +443,9 @@ var Client = (function () {
 				this.status.named = named;
 				this.status.avatar = avatar;
 				this.events.emit('rename', name, named, avatar);
-				if (named) this.joinRooms(this.opts.autoJoin);
+				// Orda edit: Don't attempt to roomjoin here. It appears to happen twice, once here and once in index.js -> botAfterConnect()
+				// if (named) this.joinRooms(this.opts.autoJoin);
+				// setTimeout( () => { Bot.joinRooms(  Config.rooms.filter( x => !Bot.rooms[x] )  ); }, 32000);  // Orda: Rejoin rooms we failed to join due to throttling
 				break;
 			case 'init':
 				this.rooms[room] = {
@@ -545,6 +550,9 @@ var Client = (function () {
 					break;
 				}
 				this.events.emit('raw', room, message.substr(2 + spl[0].length));
+				break;
+			case 'tournament':
+				this.events.emit('tournament', room, message);
 				break;
 			default:
 				if (!spl[1]) {

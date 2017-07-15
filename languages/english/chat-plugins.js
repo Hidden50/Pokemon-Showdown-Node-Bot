@@ -88,6 +88,21 @@ exports.translations = {
 			'tiererr2': 'not found',
 			'set': 'Default tier for this room is now'
 		},
+		setsampleteam: {
+			'usage': 'Usage',
+			'tier': 'Tier',
+			'notfound': 'not found',
+			'd1': 'Sample team data for tier',
+			'd2': 'has been removed'
+		},
+		sampleteam: {
+			'in': 'in',
+			'tiererr1': 'Tier',
+			'tiererr2': 'not found',
+			'nosample': 'No sample team data found for tier',
+			'aux1': 'Use',
+			'aux2': 'to set sample team data'
+		},
 		/*
 		* Quotes & Jokes
 		*/

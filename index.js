@@ -8,7 +8,7 @@ try {
 	require('sugar');
 
 	global.colors = require('colors');
-	global.sys = require('sys');
+	global.sys = require('util');
 	global.fs = require('fs');
 	global.path = require('path');
 	global.PSClient = require('./showdown-client.js');
@@ -24,6 +24,14 @@ console.log((
 	'-----------------------------------------------\n'
 ).yellow);
 
+global.MOVEDEX = require('./data/moves.js').BattleMovedex;
+global.POKEDEX = require('./data/pokedex.js').BattlePokedex;
+global.TYPECHART = require('./data/typeEff.js').BattleTypeChart;
+
+global.isolate = function(data) {
+	return JSON.parse(JSON.stringify(data));
+};
+
 global.Tools = require('./tools.js');
 var cmdArgs = process.argv.slice(2);
 if (!global.AppOptions) global.AppOptions = Tools.paseArguments(cmdArgs);
@@ -32,7 +40,7 @@ if (AppOptions.help) {
 	console.log(
 		"Options:\n" +
 		"   [-h/-help] - Gives you this guide\n" +
-		"   [-c/-config] config-file - Set a custom configuration file\n" +
+		"   [-c/-config] config-file - Set a custom configuratioon file\n" +
 		"   [-dt/-data] data-dir - Set a custom data directory\n" +
 		"   [-p/-production] - Production mode (recommended)\n" +
 		"   [-m/-monitor] - Monitor mode\n" +
@@ -76,6 +84,8 @@ global.Settings = require('./settings.js');
 
 global.DataDownloader = require('./data-downloader.js');
 
+if (global.CommandParser)
+	throw("tried to create command parser, but there already was an instance of it running");
 global.CommandParser = require('./command-parser.js');
 
 global.SecurityLog = require('./security-log.js');
@@ -138,15 +148,16 @@ global.reloadFeatures = function () {
 
 /* Bot creation and connection */
 
-function botAfterConnect () {
+function botAfterConnect (name, named) {
 	//join rooms
 	if (typeof Config.rooms === "string") {
 		joinByQueryRequest(Config.rooms);
 	} else {
 		var cmds = [];
 		var featureInitCmds;
-		for (var i = 0; i < Config.rooms.length; i++) {
-			cmds.push('|/join ' + Config.rooms[i]);
+		if (named) {
+			for (var i = 0; i < Config.rooms.length; i++)
+				cmds.push('|/join ' + Config.rooms[i]);
 		}
 		for (var i = 0; i < Config.initCmds.length; i++) {
 			cmds.push(Config.initCmds[i]);
@@ -161,6 +172,13 @@ function botAfterConnect () {
 				}
 			}
 		}
+		SecurityLog.log("Attempting botAfterConnect roomjoin: " + cmds.join(' '));
+		setTimeout(
+			() => {
+				Bot.joinRooms(  Config.rooms.filter( x => !Bot.rooms[x] )  );  // Orda edit: Rejoin rooms we failed to join due to throttling
+			},
+			32000
+		);
 		Bot.send(cmds, 2000);
 	}
 }
@@ -252,6 +270,8 @@ var opts = {
 	debug: (Config.debug ? Config.debug.debug : true)
 };
 
+if (global.Bot)
+	throw("tried to create bot object, but there already was an instance of it running");
 global.Bot = new PSClient(Config.server, Config.port, opts);
 
 var connected = false;
@@ -339,7 +359,7 @@ Bot.on('renamefailure', function (e) {
 		}
 	} else {
 		if (Config.autoReloginDelay) {
-			error('Login failure, retrying in ' + (Config.autoReloginDelay / 1000) + ' seconds.');
+			error('Login failure, retrying in ' + (Config.autoReloginDelay / 1000) + ' seconds');
 			retryingRename = true;
 			setTimeout(function () {
 				retryingRename = false;
@@ -357,15 +377,15 @@ Bot.on('renamefailure', function (e) {
 
 Bot.on('rename', function (name, named) {
 	monitor('Bot nickname has changed: ' + (named ? name.green : name.yellow) + (named ? '' : ' [guest]'));
-	SecurityLog.log('Bot nickname has changed to: ' + name + (named ? '' : ' [guest]'));
+	SecurityLog.log('Bot nickname has changed: ' + name + (named ? '' : ' [guest]'));
 	if (named) {
 		if (!Config.nick) {
 			if (Bot.roomcount > 0) return; // Namechange, not initial login
-			ok('Successfully logged in as ' + name);
-			botAfterConnect();
+			ok('Succesfully logged in as ' + name);
+			botAfterConnect(name, named);
 		} else if (toId(Config.nick) === toId(name)) {
-			ok('Successfully logged in as ' + name);
-			botAfterConnect();
+			ok('Succesfully logged in as ' + name);
+			botAfterConnect(name, named);
 		}
 	}
 });
@@ -443,7 +463,8 @@ Bot.on('joinroom', function (room, type) {
 
 Bot.on('joinfailure', function (room, e, moreInfo) {
 	SecurityLog.log('Could not join ' + room + ': [' + e + '] ' + moreInfo);
-	monitor('Could not join ' + room + ': [' + e + '] ' + moreInfo, 'room', 'error');
+	if (room.indexOf('groupchat') === -1)
+		monitor('Could not join ' + room + ': [' + e + '] ' + moreInfo, 'room', 'error');
 });
 
 Bot.on('leaveroom', function (room) {
@@ -460,6 +481,20 @@ Bot.on('message', function (msg) {
 
 Bot.on('send', function (msg) {
 	sent(msg);
+});
+
+Bot.on('raw', function (room, msg) {
+	if (/^<\w* class\="message-(?!error">Pokémon &apos;\w*&apos; not found\.)/.test(msg)) {
+		console.log(`${room} ${msg}`);
+		SecurityLog.log(`[${room}] [SERVERMESSAGE] ${msg}`);
+	}
+});
+
+Bot.on('popup', function (msg) {
+	if (true) {
+		console.log(`popup ${msg}`);
+		SecurityLog.log(`[SERVERPOPUP] ${msg}`);
+	}
 });
 
 ok('Bot object is ready');
@@ -491,15 +526,20 @@ var checkSystem = function () {
 	if (issue) {
 		switch (issue) {
 			case 'connect':
-				monitor("Monitor failed: Connection issue. Reconnecting...");
-				SecurityLog.log("Monitor failed: Connection issue. Reconnecting...");
+				monitor("Monitor failed: Connection issue. Reconnecting");
+				SecurityLog.log("Monitor failed: Connection issue. Reconnecting");
 				Bot.connect();
 				break;
 			case 'login':
-				monitor("Monitor failed: Login issue. Logging in a random username.");
-				SecurityLog.log("Monitor failed: Login issue. Logging in a random username.");
-				Config.nick = '';
-				Bot.rename('Bot ' + Tools.generateRandomNick(10));
+				monitor("Monitor failed: Login issue. Loging in a random username");
+				SecurityLog.log("Monitor failed: Login issue. Loging in a random username");
+//				Config.nick = '';
+//				Bot.rename('Bot ' + Tools.generateRandomNick(10));
+				console.log("Orda-Y override: Preventing the bot from picking a random username after login failure..");
+				setTimeout(
+					x => Bot.rename(Config.nick, Config.pass),
+					10000
+				);
 				break;
 		}
 	}

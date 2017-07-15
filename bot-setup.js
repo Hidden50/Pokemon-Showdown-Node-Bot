@@ -20,7 +20,7 @@ try {
 
 var readline = require('readline-sync');
 var fs = require('fs');
-var sys = require('sys');
+var sys = require('util');
 var url = require('url');
 var http = require('http');
 
