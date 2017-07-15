@@ -206,6 +206,7 @@ exports.translations = {
 		'server-0': 'Private Servers',
 		'inapword-0': 'Inappropriate',
 		'banword-0': 'Bannedwords',
+		'replays-0': 'Replay',
 		//autoban
 		'ab': 'Blacklisted user'
 	}

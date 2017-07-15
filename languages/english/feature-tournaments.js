@@ -52,6 +52,9 @@ exports.translations = {
 			'wasdisabled': 'Leaderboards was disabled for room',
 			'alrdisabled': 'Leaderboards is already disabled for room',
 			'unknown': 'Unknown option'
+		},
+		autotour: {
+			'touralr': 'There is already a tour, the next tour will continue on schedule.'
 		}
 	}
 };

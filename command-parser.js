@@ -136,7 +136,7 @@ var Context = exports.Context = (function () {
 		this.botName = Bot.status.nickName;
 		this.isExcepted = Tools.equalOrHigherRank(this.by, true);
 		var lang = Config.language || 'english';
-		if (this.roomType === 'chat' && Settings.settings['language'] && Settings.settings['language'][this.room]) lang = Settings.settings['language'][this.room];
+		if (this.roomType === 'chat' && Settings.settings.language && Settings.settings.language[this.room]) lang = Settings.settings.language[this.room];
 		this.language = lang;
 	}
 
@@ -153,6 +153,72 @@ var Context = exports.Context = (function () {
 			for (var i = 0; i < arg2.length; i++) arg2[i] = "|/pm " + arg1.substr(1) + "," + arg2[i];
 			Bot.send(arg2, interval);
 		}
+	};
+
+	Context.prototype.aucBroadcast = function (auction, message) {
+		if (auction.rooms.indexOf(this.room) < 0) {
+			if (this.isRanked('#'))
+				this.reply(message);
+			else this.pmReply(message);
+		}
+		for (var r in auction.rooms) Bot.say(auction.rooms[r], message);
+	};
+
+	Context.prototype.aucHtmlBroadcast = function (auction, message) {
+		if (this.isExcepted && global.debughtml)
+			return this.hastebinReply("html debug mode: ", message);
+		auction.rooms.forEach(r => {
+			if (Tools.botIsRanked(r, "#"))
+				return Bot.say(r, `!htmlbox ${message}`);
+			if (Tools.botIsRanked(r, "*"))
+				return Bot.say(r, `/addhtmlbox ${message}`);
+		});
+	};
+
+	Context.prototype.htmlReply = function (message) {
+		if (this.isExcepted && global.debughtml) {
+			if (!global.hastebinDisabled)
+				return this.hastebinReply("html debug mode: ", message);
+			this.reply("saving...");
+			fs.writeFile( './data/temp.html', message, () => this.reply("saved to ./data/temp.html") );
+		}
+		if (this.roomType !== "pm" && this.can('broadcast')) {
+			if (message.length > 100000)
+				return this.reply(`Attempted to reply with ${message.length} characters, but 100000 is the most PS will accept. :(`);
+			if (Tools.botIsRanked(this.room, "#"))
+				return this.reply(`!htmlbox ${message}`);
+			if (Tools.botIsRanked(this.room, "*"))
+				return this.reply(`/addhtmlbox ${message}`);
+		}
+		if (message.length > 100000)
+			return this.pmReply(`Attempted to reply with ${message.length} characters, but 100000 is the most PS will accept. :(`);
+		return this.pmInfobox(message);
+	};
+
+	Context.prototype.pmInfoboxTest = function () {
+		for (var r in Bot.rooms) {
+			if (Bot.rooms[r].users[toId(this.by)] && Tools.equalOrHigherRank(Bot.rooms[r].users[toId(this.botName)][0], '*'))
+				return r;
+		}
+		return false;
+	};
+
+	Context.prototype.pmInfobox = function (message) {
+		var pmInfoboxRoom = this.pmInfoboxTest();
+		if (!pmInfoboxRoom)
+			return this.pmReply('You need to be in a room where this bot is ranked "*", in order to receive pm infoboxes. Join <<ou>> and try again.');
+		Bot.say(pmInfoboxRoom, `/pminfobox ${this.by}, ${message}`);
+	};
+
+	if (global.hastebinDisabled === undefined) global.hastebinDisabled = true;
+	Context.prototype.hastebinReply = function(message, content) {
+		if (global.hastebinDisabled)
+			return this.htmlReply(Tools.escapeHTML(message) + " (hastebin is disabled)" + Tools.formatSourceAsHtml(content));
+		Tools.uploadToHastebin(content, function(success, hastebinLink) {
+			if (success)
+				return this.restrictReply(message + hastebinLink, "simplecoms");
+			this.restrictReply("An error occured while uploading to hastebin.com", "simplecoms");
+		}.bind(this));
 	};
 
 	Context.prototype.sendPM = function (targetUser, data) {
@@ -179,16 +245,19 @@ var Context = exports.Context = (function () {
 		this.send(targetRoom, data);
 	};
 
-	Context.prototype.isRanked = function (rank) {
+	Context.prototype.isRanked = function (rank, room) {
+		if (room) return this.isRoomRanked(room, rank);
 		return Tools.equalOrHigherRank(this.by, rank);
 	};
 
 	Context.prototype.isRoomRanked = function (targetRoom, rank) {
+		if ( Tools.equalOrHigherRank(this.by, rank) && (this.roomType === "pm" || this.isRanked('&')) )
+			return true;
 		if (Bot.rooms && Bot.rooms[targetRoom] && Bot.rooms[targetRoom].users) {
-			var userIdent = Bot.rooms[targetRoom].users[toId(this.by)] || this.by;
+			let userIdent = Tools.getUserIdent(this.by, targetRoom);
 			return Tools.equalOrHigherRank(userIdent, rank);
 		}
-		return this.isRanked(rank);
+		return false;
 	};
 
 	Context.prototype.can = function (permission) {
@@ -198,11 +267,11 @@ var Context = exports.Context = (function () {
 
 	Context.prototype.canSet = function (permission, rank) {
 		var rankSet;
-		if (!Settings.settings['commands'] || !Settings.settings['commands'][this.room] || typeof Settings.settings['commands'][this.room][permission] === "undefined") {
+		if (!Settings.settings.commands || !Settings.settings.commands[this.room] || typeof Settings.settings.commands[this.room][permission] === "undefined") {
 			rankSet = Config.defaultPermission;
 			if (Config.permissionExceptions[permission]) rankSet = Config.permissionExceptions[permission];
 		} else {
-			rankSet = Settings.settings['commands'][this.room][permission];
+			rankSet = Settings.settings.commands[this.room][permission];
 		}
 		if (Tools.equalOrHigherRank(this.by, rankSet) && Tools.equalOrHigherRank(this.by, rank)) return true;
 		return false;
@@ -272,7 +341,7 @@ var Context = exports.Context = (function () {
 	};
 
 	Context.prototype.parse = function (data) {
-		return exports.parse(this.room, this.by, data);
+		return exports.parse(this.room, this.by, data, this);
 	};
 
 	Context.prototype.sclog = function (data) {
@@ -286,7 +355,7 @@ var Context = exports.Context = (function () {
 	return Context;
 })();
 
-var parse = exports.parse = function (room, by, msg) {
+var parse = exports.parse = function (room, by, msg, context) {
 	if (!Tools.equalOrHigherRank(by, true)) {
 		if (resourceMonitor.isLocked(by)) return;
 	}
@@ -300,10 +369,18 @@ var parse = exports.parse = function (room, by, msg) {
 
 	var cmdToken = null;
 
-	for (var i = 0; i < commandTokens.length; i++) {
-		if (typeof commandTokens[i] === "string" && msg.substr(0, commandTokens[i].length) === commandTokens[i]) {
-			cmdToken = commandTokens[i];
-			break;
+	if (room === 'overused') {
+		if (msg[0] === '-')
+			cmdToken = '-';
+	} else if (room === 'franais') {
+		if (msg[0] === '+')
+			cmdToken = '+';
+	} else {
+		for (var i = 0; i < commandTokens.length; i++) {
+			if (typeof commandTokens[i] === "string" && msg.substr(0, commandTokens[i].length) === commandTokens[i]) {
+				cmdToken = commandTokens[i];
+				break;
+			}
 		}
 	}
 
@@ -313,8 +390,24 @@ var parse = exports.parse = function (room, by, msg) {
 		}
 		return;
 	}
-
+	
+	const parserAliases = {
+		"nom": "auction nom",
+		"nominate": "auction nom",
+		"bid": "auction bid",
+		"teaminfo": "auction teaminfo",
+		"players": "auction players",
+		"stopnom": "auction stopnom"
+	};
+	
 	var toParse = msg.substr(cmdToken.length);
+	if (toParse && auctions.defaults[room] && !isNaN(Number(toParse))) toParse = 'auction bid ' + toParse;
+	else {
+		var pos = (toParse + ' ').indexOf(' ');
+		var firstWord = toParse.substr(0, pos);
+		var restOfMessage = toParse.substr(pos);
+		if (parserAliases[firstWord]) toParse = parserAliases[firstWord] + restOfMessage;
+	}
 	var spaceIndex = toParse.indexOf(' ');
 
 	var cmd, args;
@@ -359,12 +452,16 @@ var parse = exports.parse = function (room, by, msg) {
 				commands[handler].call(context, args, by, room, cmd);
 			} catch (e) {
 				errlog(e.stack);
-				error("Command crash: " + cmd + ' | by: ' + by + ' | room: ' + room + ' | ' + sys.inspect(e));
-				SecurityLog.log("COMMAND CRASH: " + e.message + "\ncmd: " + cmd + " | by: " + by + " | room: " + room + "\n" + e.stack);
-				Bot.say(room, 'The command crashed: ' + sys.inspect(e).toString().split('\n').join(' '));
+				error("Command crash: " + cmd + ' | by: ' + by + ' | room: ' + room + ' | arg: ' + args + ' | ' + sys.inspect(e));
+				SecurityLog.log("COMMAND CRASH: " + e.message + "\ncmd: " + cmd + " | by: " + by + " | room: " + room + ' | arg: ' + args + "\n" + e.stack);
+				if ( context && Tools.botIsRanked(room, "*") )
+					context.htmlReply( 'Command crash: ' + Tools.formatSourceAsHtml(sys.inspect(e).toString().split('\n')) );
+				Bot.say(room, 'The command crashed: ' + sys.inspect(e).toString().split('\n')[0]);
 			}
 		} else {
 			error("unkwown command type: " + cmd + ' = ' + sys.inspect(commands[handler]));
 		}
 	}
 };
+
+/* globals Bot */

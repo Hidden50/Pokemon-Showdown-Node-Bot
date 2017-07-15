@@ -54,7 +54,7 @@ var FlatFileManager = exports.FlatFileManager = (function () {
 	};
 
 	FlatFileManager.prototype.writeObj = function (obj) {
-		this.write(JSON.stringify(obj));
+		this.write(JSON.stringify(obj, null, 2));
 	};
 
 	return FlatFileManager;
