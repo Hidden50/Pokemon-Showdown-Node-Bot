@@ -14,7 +14,6 @@ exports.commands = {
 		this.sclog();
 		this.say(tarRoom || room, arg);
 	},
-
 	sendpm: 'pm',
 	pm: function (arg, by, room, cmd) {
 		if (!this.isRanked('admin')) return false;
@@ -39,14 +38,22 @@ exports.commands = {
 		this.send(cmds);
 	},
 
+	leaveall: 'leave',
 	leave: function (arg, by, room, cmd) {
-		if (!this.isRanked('admin')) return false;
-		if (!arg) {
+		if (!this.isRanked('#'))
+			return false;
+		if ( !this.isRanked('~') && ( room !== "oustaff" || !this.isRanked("#", "oustaff") ) ) {
+			if (cmd === "leaveall" || arg)
+				return false;
+		}
+		if (!arg && cmd !== "leaveall") {
 			if (this.roomType !== 'pm') this.reply('/leave');
 			this.sclog();
 			return;
 		}
 		arg = arg.split(',');
+		if (cmd === "leaveall")
+			arg = Object.keys(Bot.rooms);
 		var cmds = [];
 		for (var i = 0; i < arg.length; i++) {
 			cmds.push(toId(arg[i]) + '|/leave');
