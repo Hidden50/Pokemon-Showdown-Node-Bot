@@ -594,7 +594,9 @@ exports.commands = {
 					return this.restrictReply('Already nominated ' + auction.nommedplayer, 'auction');
 				global.auction_backup[toId(auction.name)] = JSON.parse(JSON.stringify(auction));
 				auction.nommedplayer = arg;
-				this.aucBroadcast(auction, `${by} from **${auction.teams[auction.managers[by]].name}** has nominated **${auction.players[arg].name}** for auction. **${auction.players[arg].description.trim()}**`);
+				if (bidTime[0]) {
+					this.aucBroadcast(auction, `${by} from **${auction.teams[auction.managers[by]].name}** has nominated **${auction.players[arg].name}** for auction. **${auction.players[arg].description.trim()}**`);
+				}
 				arg = minBid;
 				// no return statement. nominate always calls bid, nomming a player bids the min bid on them.
 			}
@@ -621,11 +623,13 @@ exports.commands = {
 				}
 				auction.bidder = auction.managers[by];
 				auction.bid = arg;
-				this.aucBroadcast(auction, `${by}[${auction.teams[auction.managers[by]].name}]: **${auction.bid}**.`);
+				if (bidTime[0])
+					this.aucBroadcast(auction, `${by}[${auction.teams[auction.managers[by]].name}]: **${auction.bid}**.`);
 				
 				clearTimeout(auction_timer[toId(auction.name)]);
 				auction_timer[toId(auction.name)] = setTimeout(() => {
-					this.aucBroadcast(auction, `__${bidTime[1]} seconds remaining!__`);
+					if (bidTime[1])
+						this.aucBroadcast(auction, `__${bidTime[1]} seconds remaining!__`);
 					auction_timer[toId(auction.name)] = setTimeout(() => {
 						auction.teams[auction.bidder].credits -= arg;
 						auction.teams[auction.bidder].players.push(auction.nommedplayer);
@@ -651,7 +655,7 @@ exports.commands = {
 						}
 						if (Tools.botIsRanked(room, '*')) this.aucHtmlBroadcast(auction, makeAuctionOverview(auction));
 						auction.nommedplayer = auction.bid = auction.bidder = false;
-						this.aucBroadcast(auction, `It is now **${auction.teams[auction.allownom].name}**'s turn to nominate a player for auction. Managers: ${auction.teams[auction.allownom].managers.join(", ")}`);
+						this.aucBroadcast(auction, `It is now **${auction.teams[auction.allownom].name}**'s turn to choose a player. Managers: ${auction.teams[auction.allownom].managers.join(", ")}`);
 						return saveAuctions();
 					}, 1000 * bidTime[1]);
 				}, 1000 * bidTime[0]);
