@@ -27,9 +27,9 @@ function getLogInfo (file) {
 	var txt = '(';
 	try {
 		file = file.substr(0, file.length - 4);
-		var parts = file.split('_');
-		if (parts.length < 4) return '(Unknown)';
-		txt += 'Room: ' + parts[0] + ', Date: ' + getMonthString(parts[2]) + " " + parts[3] + ", " + parts[1];
+		var parts = file.split('-');
+		if (parts.length < 3) return '(Unknown)';
+		txt += 'Date: ' + getMonthString(parts[1]) + " " + parts[2] + ", " + parts[0];
 		txt += ')';
 		return txt;
 	} catch (e) {
@@ -49,7 +49,7 @@ var LogServer = (function () {
 		this.bannedIps = {};
 		this.antiSpam = true;
 		this.tokens = {};
-		this.port = opts.port || 5400;
+		this.port = opts.port || 8080;
 		this.bindaddress = opts.bindaddress || null;
 		this.server = null;
 	}
@@ -142,14 +142,14 @@ var LogServer = (function () {
 
 		var html = '';
 		var title = '';
-		html += '</title></head>';
+		html += '</title><style type="text/css">body{background-image: url("http://landw.com.au/wp-content/uploads/background.png")} input[type=submit] {-moz-box-shadow:inset 0px 1px 0px 0px #ffffff;-webkit-box-shadow:inset 0px 1px 0px 0px #ffffff;box-shadow:inset 0px 1px 0px 0px #ffffff;background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #ededed), color-stop(1, #dfdfdf));background:-moz-linear-gradient(top, #ededed 5%, #dfdfdf 100%);background:-webkit-linear-gradient(top, #ededed 5%, #dfdfdf 100%);background:-o-linear-gradient(top, #ededed 5%, #dfdfdf 100%);background:-ms-linear-gradient(top, #ededed 5%, #dfdfdf 100%);background:linear-gradient(to bottom, #ededed 5%, #dfdfdf 100%);filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=\'#ededed\', endColorstr=\'#dfdfdf\',GradientType=0);background-color:#ededed;-moz-border-radius:6px;-webkit-border-radius:6px;border-radius:6px;border:1px solid #dcdcdc;display:inline-block;cursor:pointer;color:#777777;font-family:Arial;font-size:15px;font-weight:bold;padding:6px 24px;text-decoration:none;text-shadow:0px 1px 0px #ffffff;}input[type=submit]:hover {background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #dfdfdf), color-stop(1, #ededed));background:-moz-linear-gradient(top, #dfdfdf 5%, #ededed 100%);background:-webkit-linear-gradient(top, #dfdfdf 5%, #ededed 100%);background:-o-linear-gradient(top, #dfdfdf 5%, #ededed 100%);background:-ms-linear-gradient(top, #dfdfdf 5%, #ededed 100%);background:linear-gradient(to bottom, #dfdfdf 5%, #ededed 100%);filter:progid:DXImageTransform.Microsoft.gradient(startColorstr=\'#dfdfdf\', endColorstr=\'#ededed\',GradientType=0);background-color:#dfdfdf;}</style></head>';
 		html += '<body>';
-		html += '<h2>Logs Server - Pokemon Showdown Bot</h2>\n<p><strong>Server: </strong><a target="_blank" href="http://' + Config.server + ':' + Config.port + '">' + Config.server + '</a>&nbsp;|&nbsp;<strong>Bot: </strong>' + Bot.status.nickName + '</p><p><strong>Rooms: </strong>' + (roomArr.join('&nbsp;|&nbsp;') || '<i>(none)</i>') + '</p>';
+		html += '<div class="headerBar"><img src=http://i.imgur.com/qX4MTkK.png /></div>\n<p><strong>Server: </strong><a target="_blank" href="http://' + Config.server + ':' + Config.port + '">' + Config.server + '</a>&nbsp;|&nbsp;<strong>Bot: </strong>' + Bot.status.nickName + '</p><p><strong>Rooms: </strong>' + (roomArr.join('&nbsp;|&nbsp;') || '<i>(none)</i>') + '</p>';
 		html += '<hr />';
 		html += '<p>' + (acs.user ? ('User: <strong>' + acs.user + '</strong>' + LOGOUT_HTML) : LOGIN_HTML) + (secToken === 'invalid' ? '<br /><font color="red">Invalid credentials</font>' : '') + '</p>';
 		html += '<hr />';
 		if (!url || url === "/") {
-			title = 'Logs Server - Pokemon Showdown Bot';
+			title = 'Logs Server';
 		} else {
 			var parts = url.split('/');
 			var room = parts[0] || parts[1];
@@ -184,7 +184,7 @@ var LogServer = (function () {
 		html = '<html><head><title>' + title + html;
 		if (secToken && secToken === 'invalid') {
 			response.writeHead(200, {
-				'Content-Type': 'text/html; charset=utf-8',
+				'Content-Type': 'text/html; charset=utf-8;',
 				'Set-Cookie': 'accesstoken=none'
 			});
 		} else {

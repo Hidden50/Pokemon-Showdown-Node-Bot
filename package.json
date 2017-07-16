@@ -1,50 +1,44 @@
 {
   "name": "pokemon-showdown-node-bot",
   "version": "0.7.2",
-  "author": {
-    "name": "Ecuacion",
-	"email": "alajandro5gt01@gmail.com",
-	"url": "https://github.com/Ecuacion"
-  },
+  "author": "Ecuacion <alajandro5gt01@gmail.com> (https://github.com/Ecuacion)",
   "scripts": {
     "start": "node bot",
     "test": "gulp && mocha"
   },
   "contributors": [
-    {
-      "name": "Freigeist",
-      "url": "https://github.com/Freigeist"
-    },
-    {
-      "name": "Irraquated",
-      "url": "https://irraquated.github.io"
-    },
-    {
-      "name": "panpawn",
-      "url": "https://github.com/panpawn"
-    },
-    {
-      "name": "Spudling",
-      "url": "https://github.com/Spudling"
-    }
+    "Freigeist (https://github.com/Freigeist)",
+    "Irraquated (https://irraquated.github.io)",
+    "panpawn (https://github.com/panpawn)",
+    "Spudling (https://github.com/Spudling)"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Ecuacion/Pokemon-Showdown-Node-Bot"
+    "url": "git+https://github.com/Ecuacion/Pokemon-Showdown-Node-Bot.git"
   },
   "bugs": {
     "url": "https://github.com/Ecuacion/Pokemon-Showdown-Node-Bot/issues"
   },
   "main": "bot",
-  "bin": "./bot",
+  "bin": {
+    "pokemon-showdown-node-bot": "./bot"
+  },
   "engines": {
     "node": ">=0.10.0"
   },
   "private": true,
   "license": "MIT",
   "dependencies": {
-    "sugar": "1.4.1",
     "colors": "1.0.3",
+    "forever": "^0.15.3",
+    "gimbus": "0.1.4",
+    "githubhook": "^1.1.3",
+    "index.js": "0.0.3",
+    "origindb": "2.6.1",
+    "readline-sync": "1.3.0",
+    "request": "2.72.0",
+    "request-image-size": "1.2.2",
+    "sugar": "1.4.1",
     "websocket": "1.0.18"
   },
   "devDependencies": {
@@ -64,5 +58,8 @@
     "readline-sync": "1.3.0"
   },
   "description": "Pokemon Showdown Bot",
-  "homepage": "https://github.com/Ecuacion/Pokemon-Showdown-Node-Bot"
+  "homepage": "https://github.com/Ecuacion/Pokemon-Showdown-Node-Bot",
+  "directories": {
+    "test": "test"
+  }
 }

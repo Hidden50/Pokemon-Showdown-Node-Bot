@@ -179,7 +179,7 @@ exports.commands = {
 		this.reply(rpoke);
 	},
 
-	gen: function (arg, by, room, cmd) {
+	/*gen: function (arg, by, room, cmd) {
 		var pokedex, aliases, movedex, abilities, items;
 		try {
 			pokedex = DataDownloader.getPokedex();
@@ -224,7 +224,7 @@ exports.commands = {
 			return this.restrictReply(this.trad('nfound'), 'pokemon');
 		}
 		this.restrictReply(text, 'pokemon');
-	},
+	},*/
 
 	viablemoves: 'randommoves',
 	randommoves: function (arg, by, room, cmd) {

@@ -89,6 +89,7 @@ exports.commands = {
 		if (!CommandParser.tempVar) {
 			return this.reply(this.trad('notemp'));
 		}
+		if (!arg) return false;
 		var dcmd = toId(arg);
 		var text = '';
 		if (CommandParser.dynCommands[dcmd]) {
@@ -140,7 +141,7 @@ exports.commands = {
 	stemp: 'temp',
 	temp: function (arg, by, room, cmd) {
 		if (!this.isRanked(Tools.getGroup('admin'))) return false;
-		if (arg) CommandParser.tempVar = Tools.stripCommands(arg);
+		if (arg) CommandParser.tempVar = (arg);
 		this.sclog("Temp command-parser var changed");
 		this.reply('Temp: ' + CommandParser.tempVar);
 	}

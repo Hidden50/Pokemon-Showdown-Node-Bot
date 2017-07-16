@@ -50,13 +50,13 @@ var parser = function (type, data) {
 			break;
 		case 'turn':
 			send(this.room, "**" + exports.title + ":** " + trans("turn1", this.room) + " " + data.name + trans("turn2", this.room) + " " + trans("helpturn1", this.room).replace(/[$]/g, CommandParser.commandTokens[0]) + " " + Math.floor(this.turnTime / 1000).toString() + " " + trans("helpturn2", this.room));
-			send(this.room, "**" + exports.title + ":** " + trans("hand1", this.room) + " " + data.name + "" + trans("hand2", this.room) + ": " + formateHand(data.hand, this.getHandValue(data.hand), trans("total", this.room)));
+			send(this.room, "/pm " + this.currPlayer.name + ", **" + exports.title + exports.title + ":** " + trans("hand1", this.room) + " " + data.name + "" + trans("hand2", this.room) + ": " + formateHand(data.hand, this.getHandValue(data.hand), trans("total", this.room)));
 			break;
 		case 'player':
 			if (data.type === "stand") {
 				send(this.room, "**" + exports.title + ":** " + this.currPlayer.name + " " + trans("stand", this.room) + "!");
 			} else if (data.type === "hit") {
-				send(this.room, "**" + exports.title + ":** " + this.currPlayer.name + " " + trans("hit", this.room) + ": " + formateHand(this.currPlayer.hand, this.getHandValue(this.currPlayer.hand), trans("total", this.room)));
+				send(this.room, "/pm " + this.currPlayer.name + ", **" + exports.title + ":** " + this.currPlayer.name + " " + trans("hit", this.room) + ": " + formateHand(this.currPlayer.hand, this.getHandValue(this.currPlayer.hand), trans("total", this.room)));
 			}
 			handval = this.getHandValue(this.currPlayer.hand);
 			if (handval === 21) {

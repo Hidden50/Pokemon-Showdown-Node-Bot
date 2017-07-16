@@ -1,4 +1,31 @@
 /*
+	reporting moderation events to a staff room
+*/
+
+let reportModerations = {
+	"overused":  "oustaff",
+	"neverused": "nustaff"
+};
+
+setTimeout(initStaffroomModMessages, 6000);
+function initStaffroomModMessages() {
+	if(!global.staffroomModMessages) {
+		global.staffroomModMessages = true;
+		Bot.on("chat", (room, date, by, message) => {
+			if( reportModerations[room] && message.startsWith("/log") ) {
+				let [, target, logmessage, punishment] = /^\/log (.*)( was ((?:un)?(?:warned|muted|banned|blacklisted|locked|redirected|promoted|demoted)).*$)/.exec(message);
+				if (logmessage)
+					logmessage = Tools.colorName(target, true) + Tools.escapeHTML(logmessage);
+				else logmessage = Tools.escapeHTML(message.substring(5));
+				Bot.say(reportModerations[room], `/addhtmlbox (${room}) ${Tools.makeHtmlTimestamp(room, date)} ${logmessage}`);
+				if (["warned", "muted", "banned", "blacklisted", "locked"].includes(punishment))
+					CommandParser.parse(reportModerations[room], "Orda-Y", `.messages public; ${target}`);
+			}
+		});
+	}
+}
+
+/*
 	Commands for Moderation Feature
 */
 
@@ -228,7 +255,7 @@ exports.commands = {
 	vab: 'viewblacklist',
 	viewautobans: 'viewblacklist',
 	viewblacklist: function (arg, by, room, cmd) {
-		if (!this.can('autoban')) return;
+		if (!this.isRanked('%')) return;
 		var tarRoom = room;
 		var targetObj = Tools.getTargetRoom(arg);
 		var textHelper = '';
@@ -488,7 +515,7 @@ exports.commands = {
 	viewbannedphrases: 'viewbannedwords',
 	vbw: 'viewbannedwords',
 	viewbannedwords: function (arg, user, room) {
-		if (!this.can('banword')) return;
+		if (!this.isRanked(Tools.getGroup('voice'))) return;
 		var tarRoom;
 		var text = '';
 		var bannedFrom = '';
@@ -838,7 +865,7 @@ exports.commands = {
 			'flooding': 1,
 			'spam': 1,
 			'bannedwords': 1,
-			'inapropiate': 1,
+			'inappropriate': 1,
 			'spoiler': 1,
 			'youtube': 1,
 			'psservers': 1,
@@ -857,7 +884,7 @@ exports.commands = {
 
 		if (set === 'on') {
 			if (Settings.settings['modding'][tarRoom][mod] === 1) {
-				this.reply(this.trad('mod') + " **" + mod + "** " + this.trad('ae') + ' ' + tarRoom);
+				this.reply(this.trad('mod') + " " + mod + " " + this.trad('ae') + ' ' + tarRoom);
 			} else {
 				Settings.settings['modding'][tarRoom][mod] = 1;
 				Settings.save();

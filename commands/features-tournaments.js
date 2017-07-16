@@ -27,6 +27,10 @@ exports.commands = {
 	tour: 'tournament',
 	tournament: function (arg, by, room, cmd) {
 		if (this.roomType !== 'chat' || !this.can('tournament')) return;
+//        if (!this.isRanked('@')) {
+//            return this.pmReply('Sorry, we had to restrict this command to @ and above because ' +
+//                'otherwise it overrides the PS rank system. PM Orda-Y for details :[');
+//        }
 		if (Features['tours'].tourData[room]) {
 			if (toId(arg) === 'end') return this.parse(this.cmdToken + 'tourend');
 			if (toId(arg) === 'start') return this.parse(this.cmdToken + 'tourstart');
@@ -181,9 +185,67 @@ exports.commands = {
 		}
 	},
 
+	include: 'exclude',
+	exclude: function(arg, by, room, cmd) {
+		if (!this.isRanked('%')) return;
+		if (!Features['tours'].Leaderboards.isConfigured(room)) return this.reply(this.trad('not') + " " + room);
+		if (!Features['tours'].tourData[room]) return this.reply(this.trad("notour"));
+		if (cmd === 'include') {
+			if (!Features['tours'].tourData[room].isExcluded) return this.reply("This tournament is already included.");
+			Features['tours'].tourData[room].isExcluded = false;
+			this.reply("This tournament will now increase the leaderboard values.");
+		} else {
+			if (Features['tours'].tourData[room].isExcluded) return this.reply("This tournament is already excluded.");
+			Features['tours'].tourData[room].isExcluded = true;
+			this.reply("This tournament will not increase the leaderboard values.");
+		}
+	},
+
+	banlist: function(arg, by, room, cmd) {
+		if (!this.isRanked('%')) return;
+		if (!Features['tours'].tournaments[room]) return this.reply(this.trad("notour"));
+		if (!Features['tours'].tournaments[room].bans) return this.reply('The tournament banlist is empty.');
+		return this.htmlReply(Features['tours'].banlistToHtml(Features['tours'].tournaments[room].bans));
+	},
+
+	tourannounce: function(arg, by, room, cmd) {
+		if (!this.isRanked('#')) return;
+		if (!Settings.settings['tournaments']) Settings.settings['tournaments'] = {};
+		if (!Settings.settings['tournaments'][room]) Settings.settings['tournaments'][room] = {};
+		var args = arg.split(",");
+		if (args.length < 2) return this.reply(`Usage: ${this.cmdToken}${cmd} [setting], [on/off]`);
+		var setting = args[0].trim();
+		var opt = args[1].trim();
+		if (setting === 'finals' || setting === 'final') {
+			if (opt === 'off' || opt === 'disable') {
+				Settings.settings['tournaments'][room]['finals'] = 0;
+			} else if (opt === 'on' || opt === 'enable') {
+				Settings.settings['tournaments'][room]['finals'] = 1;
+			} else {
+				return this.reply(`Usage: ${this.cmdToken}${cmd} [${setting}], [on/off]`);
+			}
+			Settings.save();
+			return this.reply(`Settings updated for room: **${room}**, announcing of finals set to: **${opt}**.`);
+		} else if (setting === 'pmalerts') {
+			if (opt === 'off' || opt === 'disable') {
+				Settings.settings['tournaments'][room]['pmalerts'] = 0;
+			} else if (opt === 'on' || opt === 'enable') {
+				Settings.settings['tournaments'][room]['pmalerts'] = 1;
+			} else {
+				return this.reply(`Usage: ${this.cmdToken}${cmd} [${setting}], [on/off]`);
+			}
+			Settings.save();
+			return this.reply(`Settings updated for room: **${room}**, PM alerts set to: **${opt}**.`);
+		} else {
+			return this.reply(`Usage: ${this.cmdToken}${cmd} [setting], [on/off]`);
+		}
+	},
+
 	rank: 'leaderboard',
 	ranking: 'leaderboard',
 	top: 'leaderboard',
+	board: 'leaderboard',
+	scoreboard: 'leaderboard',
 	leaderboards: 'leaderboard',
 	leaderboard: function (arg, by, room, cmd) {
 		var args = arg.split(",");
@@ -197,6 +259,7 @@ exports.commands = {
 			case "rank":
 			case "ranking":
 				tarRoom = room;
+				if (this.roomType !== "chat" && args.length < 2) return this.restrictReply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room], [user]", "rank");
 				if (this.roomType !== "chat") tarRoom = toRoomid(args.shift());
 				if (args.length > 1) tarRoom = toRoomid(args.shift());
 				if (!tarRoom) return this.restrictReply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room], [user]", "rank");
@@ -219,7 +282,7 @@ exports.commands = {
 				if (!top || !top.length) return this.restrictReply(this.trad('empty') + " " + tarRoom, "rank");
 				var topResults = [];
 				for (var i = 0; i < 5 && i < top.length; i++) {
-					topResults.push("__#" + (i + 1) + "__ **" + Tools.toName(top[i][0]) + "** (" + top[i][6] + ")");
+					topResults.push("__#" + (i + 1) + "__ **" + Tools.toName(top[i][0]) + "** (" + top[i][7] + ")");
 				}
 				this.restrictReply("**" + Tools.toName(tryGetRoomName(tarRoom)) + "** | " + topResults.join(", "), "rank");
 				break;
@@ -238,16 +301,84 @@ exports.commands = {
 					else this.pmReply(this.trad('err'));
 				}.bind(this));
 				break;
-			case "reset":
+			case "scoreboard":
+			case "board":
+			case "htmltable":
+				if (!this.isRanked('%')) return false;
+				if (args.length > 0) tarRoom = toRoomid(args[0]);
+				if (!tarRoom && this.roomType === "chat") tarRoom = room;
+				if (!tarRoom) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room]");
+				if (!Features['tours'].Leaderboards.isConfigured(tarRoom)) return this.reply(this.trad('not') + " " + tarRoom);
+				var usePercent = true;
+				var size = (args[1] ? parseInt(args[1]) : 10);
+				var sizeLimit = 235;
+				if (!this.isRanked('roomowner')) sizeLimit = 128;
+				if (args[2]) usePercent = args[2].trim() === !('%' || 'raw');
+				if (!size || size < 0) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room], [size], [raw]");
+				if (size > sizeLimit) size = sizeLimit;
+				var htmlTable = Features['tours'].Leaderboards.getHtmlTable(tarRoom, size, usePercent, sizeLimit);
+				if (!htmlTable) return this.reply(this.trad('empty') + " " + tarRoom);
+				if (Bot.rooms[room].users[toId(this.botName)] && Bot.rooms[room].users[toId(this.botName)][0] === '#')
+					this.reply("!htmlbox <center>" + htmlTable + "</center>");
+				else if (Bot.rooms[room].users[toId(this.botName)] && Bot.rooms[room].users[toId(this.botName)][0] === '*')
+					this.reply("/addhtmlbox <center>" + htmlTable + "</center>");
+				else return this.pmReply('I need either the rank ``*`` or ``#`` to broadcast the tournament table :(');
+				break;
+			case 'addpoints':
+				if (!this.isRanked('roomowner')) return false;
+				if (args.length < 2) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [user], [points]");
+				if (!Features['tours'].Leaderboards.isConfigured(tarRoom)) return this.reply(this.trad('not') + " " + tarRoom);
+				tarRoom = room;
+				var target = toId(args[0]);
+				var points = parseInt(args[1]);
+				var addPoints = Features['tours'].Leaderboards.addPoints(tarRoom, target, points);
+				if (addPoints == true) {
+					this.reply("The pointvalue of " + target + " has been increased by " + points);
+				} else {
+					this.reply(target + " could not be found in the leaderboard of room: " + tarRoom);
+				}
+				break;
+			case "merge":
 				if (!this.isExcepted) return false;
-				if (args.length < 1 || !toId(args[0])) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room]");
-				tarRoom = toRoomid(args[0]);
+				if (args.length < 2) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [main], [alt], [room]");
+				tarRoom = args[2] ? toRoomid(args[2]) : room;
+				if (!tarRoom) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [main], [alt], [room]");
+				if (!Features['tours'].Leaderboards.isConfigured(tarRoom)) return this.reply(this.trad('not') + " " + tarRoom);
+				var main = toId(args[0]);
+				var alt = toId(args[1]);
+				var merge = Features['tours'].Leaderboards.mergeUser(tarRoom, main, alt);
+				if (merge === true) {
+					this.reply("The score of **" + alt + "** has been added to **" + main + "**.");
+				} else {
+					this.reply("Could not merge **" + alt + "** with **" + main + "**, at least one of the names has played in any tournaments.");
+				}
+				break;
+			case "delete":
+				if (!this.isRanked('roomowner')) return false;
+				if (args.length < 1) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [user], [room]");
+				var target = toId(args[0]);
+				if (this.isExcepted && args[1]) tarRoom = toRoomid(args[2]);
+				if (!tarRoom) tarRoom = room;
+				if (!Features['tours'].Leaderboards.isConfigured(tarRoom)) return this.reply(this.trad('not') + " " + tarRoom);
+				var deleteUser = Features['tours'].Leaderboards.deleteUser(tarRoom, target);
+				if (deleteUser === true) {
+					this.reply("Successfully deleted " + target + " from leaderboard.");
+				} else {
+					this.reply("Failed to delete " + target + " from leaderboard.");
+				}
+				break;
+			case "reset":
+				if (!this.isRanked('roomowner')) return false;
+				if ((args.length < 1 || !toId(args[0])) && this.isExcepted) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room]");
+				if (this.isExcepted) tarRoom = toRoomid(args[0]);
+				if (!tarRoom && this.roomType === "chat") tarRoom = room;
+				if (!tarRoom) return this.reply('Could not find target room.');
 				var code = Features['tours'].Leaderboards.getResetHashCode(tarRoom);
 				if (!code) return this.reply(this.trad('empty') + " " + tarRoom);
 				this.reply(this.trad('use') + " ``" + this.cmdToken + this.handler + " confirmreset, " + code + "`` " + this.trad('confirm') + " " + room);
 				break;
 			case "confirmreset":
-				if (!this.isExcepted) return false;
+				if (!this.isRanked('roomowner')) return false;
 				if (args.length < 1 || !toId(args[0])) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [hashcode]");
 				var _code = args[0].trim();
 				var r =  Features['tours'].Leaderboards.execResetHashCode(_code);
@@ -256,9 +387,11 @@ exports.commands = {
 				this.reply(this.trad('data') + " __" + r + "__ " + this.trad('del'));
 				break;
 			case "viewconfig":
-				if (!this.isExcepted) return false;
-				if (args.length < 1 || !toId(args[0])) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room]");
-				tarRoom = toRoomid(args[0]);
+				if (!this.isRanked('roomowner')) return false;
+				if ((args.length < 1 || !toId(args[0])) && this.isExcepted) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room]");
+				if (this.isExcepted) tarRoom = toRoomid(args[0]);
+				if (!tarRoom && this.roomType === "chat") tarRoom = room;
+				if (!tarRoom) return this.reply('Could not find target room.');
 				var rConf = Features['tours'].Leaderboards.getConfig(tarRoom);
 				if (Config.leaderboards && Config.leaderboards[tarRoom]) {
 					this.reply("Room: " + tarRoom + " | ``config.js`` - static | " +
@@ -275,11 +408,15 @@ exports.commands = {
 				}
 				break;
 			case "setconfig":
-				if (!this.isExcepted) return false;
+				if (!this.isRanked('roomowner')) return false;
 				if (!Settings.settings.leaderboards) Settings.settings.leaderboards = {};
 				if (args.length < 2 || !toId(args[0])) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room], [on/off], [W], [F], [SF], [B], [official/all]");
 				if (args[6] && toId(args[6]) !== "official" && toId(args[6]) !== "all") return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room], [on/off], [W], [F], [SF], [B], [official/all]");
-				tarRoom = toRoomid(args[0]);
+				if (this.isExcepted) {
+					tarRoom = toRoomid(args[0]);
+				} else {
+					tarRoom = room;
+				}
 				var enabled = toId(args[1]);
 				var rConfAux = Features['tours'].Leaderboards.getConfig(tarRoom);
 				if (enabled in {on: 1, enabled: 1}) {
@@ -314,8 +451,88 @@ exports.commands = {
 					return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room], [on/off], [W], [F], [SF], [B], [official/all]");
 				}
 				break;
+			case "filter":
+				if (!this.isRanked('roomowner')) return false;
+				if (args.length < 1) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [add/remove/view], [tier1], [tier2], [tier3]...");
+				tarRoom = room;
+				if (!Features['tours'].Leaderboards.isConfigured(tarRoom)) return this.reply(this.trad('not') + " " + tarRoom);
+				var set = args.shift();
+				var tierFilter = Features['tours'].Leaderboards.getConfig(tarRoom).tierFilter;
+				if (set.trim() === 'add') {
+					if (args.length < 1) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [add/remove/view], [tier1], [tier2], [tier3]...");
+					for (var i = 0; i < args.length; i++) {
+						Settings.settings.leaderboards[tarRoom].tierFilter[toId(args[i])] = 1;
+					}
+					this.sclog();
+					Settings.save();
+					this.reply(args.join(', ') + " added to filtered tiers.");
+				} else if (set.trim() === ('remove' || 'delete')) {
+					if (args.length < 1) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [add/remove/view], [tier1], [tier2], [tier3]...");
+					for (var i = 0; i < args.length; i++) {
+						if (tierFilter[toId(args[i])] === 1) {
+							delete Settings.settings.leaderboards[tarRoom].tierFilter[toId(args[i])];
+						}
+					}
+					this.sclog();
+					Settings.save();
+					this.reply(args.join(', ') + " removed from filtered tiers.");
+				} else if (set.trim() === 'view') {
+					var list = [];
+					for (i in tierFilter) {
+						list.push(i);
+					}
+					if (list.length < 1) {
+						this.reply("No tiers are being filtered.");
+					} else {
+						this.reply("Current filter: " + list.join(', '));
+					}
+				} else {
+					this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [add/remove/view], [tier1], [tier2], [tier3]...");
+				}
+				break;
+			case "on":
+			case "off":
+			case "enable":
+			case "disable":
+			case "setdefault":
+				if (!this.isRanked('roomowner')) return false;
+				if (args.length > 0) tarRoom = toRoomid(args[0]);
+				if (!tarRoom && this.roomType === "chat") tarRoom = room;
+				if (!tarRoom) return this.reply(this.trad('usage') + ": " + this.cmdToken + cmd + " [room]");
+				if (opt === 'off' || opt === 'disable') {
+					if (Settings.settings.leaderboards && Settings.settings.leaderboards[tarRoom]) {
+						this.sclog();
+						delete Settings.settings.leaderboards[tarRoom];
+						Settings.save();
+						return this.reply('Leaderboards have been disabled in room: ' + tarRoom + ' | by: ' + by);
+					} else {
+						return this.reply('Leaderboards not enabled in room: ' + tarRoom);
+					}
+				} else {
+					var rConfAux = Features['tours'].Leaderboards.getConfig(tarRoom);
+					rConfAux.winnerPoints = 3;
+					rConfAux.finalistPoints = 2;
+					rConfAux.semiFinalistPoints = 1;
+					rConfAux.battlePoints = 1;
+					rConfAux.onlyOfficial = false;
+					this.sclog();
+					Settings.settings.leaderboards[tarRoom] = rConfAux;
+					Settings.save();
+					this.reply('Leaderboards enabled for room: ' + tarRoom + ' | by: ' + by);
+				}
+				break;
+			case "runconfig":
+				if (!this.isExcepted) return false;
+				var updatedRooms = Features['tours'].Leaderboards.runRoomConfig();
+				var updatedUsers = Features['tours'].Leaderboards.runUserConfig();
+				if (updatedRooms === true && updatedUsers === true) {
+					this.reply("Leaderboards config has been updated.");
+				} else {
+					this.reply("Process failed.");
+				}
+				break;
 			default:
-				this.restrictReply(this.trad('unknown') + ". " + this.trad('usage') + ": " + this.cmdToken + this.handler + " [rank/top/table/reset/setconfig/viewconfig]", "rank");
+				this.restrictReply(this.trad('unknown') + ". " + this.trad('usage') + ": " + this.cmdToken + this.handler + " [rank/top/table/htmltable/merge/reset/setconfig/viewconfig/filter]", "rank");
 		}
 	}
 };

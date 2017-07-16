@@ -2,35 +2,23 @@
 	Basic Commands
 */
 
-Settings.addPermissions(['say']);
+Settings.addPermissions(['say', 'info']);
 
 exports.commands = {
-	credits: 'about',
-	bot: 'about',
-	about: function () {
-		this.restrictReply(this.trad('about') + ". " + this.trad('author') + ": " + Settings.package.author.name + ". (" + Settings.package.homepage + ")", 'info');
-	},
-
-	git: 'github',
-	github: function () {
-		if (Settings.package.repository) this.restrictReply(Tools.stripCommands(Settings.package.repository.url), 'info');
-	},
-
-	botversion: 'version',
-	version: function () {
-		this.restrictReply(Tools.stripCommands(Settings.package.version), 'info');
+	bottime: 'time',
+	time: function () {
+		var f = new Date();
+		this.restrictReply("**" + this.trad('time') + ":** __" + f.toString() + "__", 'info');
 	},
 
 	guide: 'help',
 	botguide: 'help',
 	help: function () {
-		this.restrictReply(this.trad('guide') + ': ' + (Config.botguide || (Settings.package.homepage + "/blob/master/commands/README.md")), 'info');
+		this.restrictReply('https://gist.github.com/Irraquated/6e576fae1b1731875843', 'simplecoms');
 	},
-
-	bottime: 'time',
-	time: function () {
-		var f = new Date();
-		this.restrictReply("**" + this.trad('time') + ":** __" + f.toString() + "__", 'info');
+	
+	about: function () {
+		this.restrictReply('Scrappie, based on Ecuacion\'s pokemon showdown node bot. Modified by Law, Orda-Y and Teremiare. Currently maintained by Orda-Y and Teremiare.');
 	},
 
 	uptime: function () {
@@ -96,7 +84,8 @@ exports.commands = {
 						text += ', ' + this.trad('c') + ' <<' + dSeen.room + '>>';
 						break;
 					case 'n':
-						text += ', ' + this.trad('n') + ' **' + dSeen.args[0] + '**';
+						if (this.isRanked('%'))
+							text += ', ' + this.trad('n') + ' **' + dSeen.args[0] + '**';
 						break;
 				}
 			}
@@ -107,7 +96,9 @@ exports.commands = {
 	},
 
 	publicalts: 'alts',
-	alts: function (arg) {
+	alts: function (arg, by, room, cmd) {
+        if (!this.isRanked('%')) return this.pmReply("The .alts command currently requires rank % or higher.");
+		if (toId(room) !== toId(by)) return this.pmReply('Please only use this feature in pms.');
 		var text = '';
 		arg = toId(arg);
 		if (!arg || arg.length > 18) return this.pmReply(this.trad('inv'));

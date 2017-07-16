@@ -172,7 +172,7 @@ exports.commands = {
 		if (Features['battle'].TourManager.tourData[room].isJoined) return this.reply(this.trad('e2'));
 		if (Features['battle'].TourManager.tourData[room].isStarted) return this.reply(this.trad('e3'));
 		var format = toId(Features['battle'].TourManager.tourData[room].format);
-		if (Formats[format] && Formats[format].team && !Features['battle'].TeamBuilder.hasTeam(format)) return this.reply(this.trad('e41') + ' ' + format + '. ' + this.trad('e42'));
+		if (!Formats[format] || (Formats[format].team && !Features['battle'].TeamBuilder.hasTeam(format))) return this.reply(this.trad('e41') + ' ' + format + '. ' + this.trad('e42'));
 		this.reply("/tour join");
 	},
 

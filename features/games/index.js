@@ -88,7 +88,7 @@ var cmdParser = exports.cmdParser = function (room, by, msg) {
 			} catch (e) {
 				errlog(e.stack);
 				error("Command crash (game): " + cmd + ' | by: ' + by + ' | room: ' + room + ' | ' + sys.inspect(e));
-				Bot.say(room, 'The command crashed: ' + sys.inspect(e).toString().split('\n').join(' '));
+				context.htmlReply( 'Command crash: ' + Tools.formatSourceAsHtml(sys.inspect(e).toString().split('\n')) );
 			}
 			return true;
 		} else {

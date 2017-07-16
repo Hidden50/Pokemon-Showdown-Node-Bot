@@ -6,7 +6,7 @@
 
 function getDefaultTier (room) {
 	if (Settings.settings.deftier && Settings.settings.deftier[room]) return Settings.settings.deftier[room];
-	return "ou";
+	return "gen7ou";
 }
 
 /* Usage utils */
@@ -155,7 +155,7 @@ exports.commands = {
 				return this.restrictReply(this.trad((this.cmd === "usagedata" ? "data" : "stats")) + ': ' + link + (this.cmd === "usagedatalink" ? "moveset/" : "") + (tFormat ? (tFormat + "-" + ((tFormat in topTiers) ? "1695" : "1630") + ".txt") : ""), 'usage');
 			}
 			var poke = "garchomp", searchIndex = -1;
-			var tier = getDefaultTier(this.room);
+			var tier = toId(getDefaultTier(this.room));
 			var dataType = "";
 			var ladderType = 1630;
 			var args = arg.split(",");
@@ -173,7 +173,7 @@ exports.commands = {
 				dataType = toId(args[1]);
 				if (!(dataType in {"moves": 1, "items": 1, "abilities": 1, "teammates": 1, "spreads": 1})) return this.restrictReply(this.trad('usage') + ": " + this.cmdToken + this.cmd + " [pokemon], [moves / items / abilities / spreads / teammates], (tier)", 'usage');
 				if (args[2]) {
-					tier = Tools.parseAliases(args[2]);
+					tier = toId(Tools.parseAliases(args[2]));
 					if (!Formats[tier] && !Formats[tier + "suspecttest"])
 						return this.restrictReply(this.trad('tiererr1') + " \"" + tier + "\" " + this.trad('tiererr2'), 'usage');
 				}

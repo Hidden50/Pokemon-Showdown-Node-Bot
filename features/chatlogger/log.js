@@ -37,7 +37,7 @@ module.exports = {
 
 	"log": function (room, message, intro) {
 		var f = new Date();
-		var fstr = Tools.addLeftZero(f.getFullYear(), 4) + '_' + Tools.addLeftZero(f.getMonth() + 1, 2) + '_' + Tools.addLeftZero(f.getDate(), 2);
+		var fstr = Tools.addLeftZero(f.getFullYear(), 4) + '-' + Tools.addLeftZero(f.getMonth() + 1, 2) + '-' + Tools.addLeftZero(f.getDate(), 2);
 		if (!this.logStreams[room] || this.logDates[room] !== fstr) {
 			if (this.logStreams[room]) {
 				try {
@@ -46,7 +46,7 @@ module.exports = {
 			}
 			this.logDates[room] = fstr;
 			checkDir(LOGS_PATH + room + '/');
-			this.logStreams[room] = fs.createWriteStream(LOGS_PATH + room + '/' + room + '_' + fstr + '.log', {flags:'a+'});
+			this.logStreams[room] = fs.createWriteStream(LOGS_PATH + room + '/' + fstr + '.log', {flags:'a+'});
 			this.sweep(LOGS_PATH + room + '/');
 		}
 		this.logStreams[room].write((intro ? '[INTRO] ' : '') + '[' + Tools.addLeftZero(f.getHours(), 2) + ':' + Tools.addLeftZero(f.getMinutes(), 2) + ':' + Tools.addLeftZero(f.getSeconds(), 2) + '] ' + message + '\n');
@@ -59,6 +59,10 @@ module.exports = {
 			if (Config.chatLogger.ageOfLogs <= 0) return;
 			ageOfLogs = Config.chatLogger.ageOfLogs;
 		}
+		if (Config.chatLogger && typeof Config.chatLogger.ageExceptions === "object" && typeof Config.chatLogger.ageExceptions[dir] === "number") {
+			if (Config.chatLogger.ageExceptions[dir] <= 0) return;
+			ageOfLogs = Config.chatLogger.ageExceptions[dir];
+		}
 		var f = new Date();
 		try {
 			var logs = fs.readdirSync(dir);
@@ -67,9 +71,9 @@ module.exports = {
 			for (var i = 0; i < logs.length; i++) {
 				if (logs[i].substr(-4) !== ".log") continue;
 				aux = logs[i].substr(0, logs[i].indexOf("."));
-				aux = aux.split('_');
+				aux = aux.split('-');
 				if (aux.length < 4) continue;
-				if (dateDifference({"day": parseInt(aux[3]), "month": parseInt(aux[2]), "year": parseInt(aux[1])}, {"day": f.getDate(), "month": f.getMonth() + 1, "year": f.getFullYear()}) > maxDaysOld) {
+				if (dateDifference({"day": parseInt(aux[2]), "month": parseInt(aux[1]), "year": parseInt(aux[0])}, {"day": f.getDate(), "month": f.getMonth() + 1, "year": f.getFullYear()}) > maxDaysOld) {
 					try {fs.unlinkSync(dir + logs[i]);} catch (e) {error('failed to delete old logs\n' +  e.stack);}
 				}
 			}

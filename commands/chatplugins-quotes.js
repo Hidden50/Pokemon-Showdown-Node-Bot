@@ -47,7 +47,7 @@ exports.commands = {
 	getquote: 'quote',
 	quote: function (arg, by, room, cmd) {
 		if (cmd === "addquote" || cmd === "setquote") {
-			if (!this.isRanked('admin')) return false;
+			if (!this.can('quote')) return false;
 			var args = arg.split(",");
 			if (args.length < 2) return this.reply(this.trad('u1') + ": " + this.cmdToken + cmd + " " + this.trad('u2'));
 			var id = toId(args[0]);
@@ -107,7 +107,7 @@ exports.commands = {
 	getjoke: 'joke',
 	joke: function (arg, by, room, cmd) {
 		if (cmd === "addjoke" || cmd === "setjoke") {
-			if (!this.isRanked('admin')) return false;
+			if (!this.can('quote')) return false;
 			var args = arg.split(",");
 			if (args.length < 2) return this.reply(this.trad('u1') + ": " + this.cmdToken + cmd + " " + this.trad('u2'));
 			var id = toId(args[0]);

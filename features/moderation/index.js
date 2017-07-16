@@ -211,12 +211,14 @@ function parseChat (room, time, by, message) {
 	} else {
 		for (var i in Config.moderation.modDefault) {
 			if (typeof Settings.settings['modding'][room][i] === "undefined") {
-				modSettings[i] = Config.moderation.modDefault[i];
+				modSettings[i] = Config.privateRooms[room] ? 0 : Config.moderation.modDefault[i];
 			} else {
 				modSettings[i] = Settings.settings['modding'][room][i];
 			}
 		}
 	}
+	if (useDefault && Config.privateRooms[room])
+		return;
 
 	var pv = 0;
 	var capsMatch = msg.replace(/[^A-Za-z]/g, '').match(/[A-Z]/g);
@@ -353,8 +355,41 @@ function parseChat (room, time, by, message) {
 			muteMessage = ', ' + trad('automod', room) + ': ' + trad('youtube', room);
 		}
 	}
-
+	
 	pv = getValue("replays");
+	if (modSettings['replays'] !== 0) {
+		if (room === 'overused') {
+			// block non-OU replays AND battle links for the OU room
+			if (/\b(re|(?=[\w\.\/]*battle-))play\.pokemonshowdown\.com\/(?!(\w*-)?(ou|gen\d(pokebank)?(ou|oususpecttest))-)(\w*-)*\d+\b/.test(msg)) {
+				infractions.push(trad('replays-0', room));
+				totalPointVal += pv;
+				if (pointVal < pv) {
+					pointVal = pv;
+					muteMessage = ', ' + trad('automod', room) + ': Please only post replays and battles with relevance to OU.';
+				}
+			}
+		}	else if (room === 'underused') {
+			// block non-UU replays AND battle links for the UU room
+			if (/\b(re|(?=[\w\.\/]*battle-))play\.pokemonshowdown\.com\/(?!(\w*-)?(uu|uususpecttest|gen5uu|gen4uu|gen3ou)-)(\w*-)*\d+\b/.test(msg)) {
+				infractions.push(trad('replays-0', room));
+				totalPointVal += pv;
+				if (pointVal < pv) {
+					pointVal = pv;
+					muteMessage = ', ' + trad('automod', room) + ': Please only post replays and battles with relevance to UU.';
+				}
+			}
+		}	else if (msg.toLowerCase().indexOf("replay.pokemonshowdown.com/") > -1) {
+			infractions.push(trad('replays-0', room));
+			totalPointVal += pv;
+			if (pointVal < pv) {
+				pointVal = pv;
+				muteMessage = ', ' + trad('automod', room) + ': ' + trad('replays', room);
+			}
+		}
+	}
+
+/* old impl
+    pv = getValue("replays");
 	if (modSettings['replays'] !== 0 && (msg.toLowerCase().indexOf("replay.pokemonshowdown.com/") > -1)) {
 		infractions.push(trad('replays-0', room));
 		totalPointVal += pv;
@@ -363,6 +398,7 @@ function parseChat (room, time, by, message) {
 			muteMessage = ', ' + trad('automod', room) + ': ' + trad('replays', room);
 		}
 	}
+*/
 
 	pv = getValue("servers");
 	if (modSettings['psservers'] !== 0 && msg.toLowerCase().indexOf(".psim.us") > -1) {
@@ -456,6 +492,7 @@ function parseChat (room, time, by, message) {
 			}
 		}
 
+		if (pointVal > 2) pointVal = 2;  // the bot's heuristics aren't strong enough to justify bans. Roomauth should do those manually
 		cmd = Config.moderation.punishments[pointVal - 1];
 
 		if (cmd  === 'roomban' && !isBotRanked(room, Tools.getGroup('moderator'))) cmd = 'hourmute'; //Bot is not a moderator
@@ -470,7 +507,12 @@ function parseJoin (room, by) {
 	if (jp) Bot.say(room, jp);
 	if (Tools.equalOrHigherRank(by, Config.moderation.modException)) return;
 	var ban = isBanned(room, by);
-	if (ban) Bot.say(room, '/roomban ' + by + ', ' + trad('ab', room) + ((ban === '#range') ? ' (RegExp)' : ''));
+	if (ban) {
+		Bot.say(room, '/roomban ' + by + ', ' + trad('ab', room) + ((ban === '#range') ? ' (RegExp)' : ''));
+		if (room === "overused") {
+			Bot.say("oustaff", `/addhtmlbox Blacklisted user "${Tools.escapeHTML(by.trim())}" was banned from ${room} and should probably be moved to the server-side blacklist.`);
+		}
+	}
 }
 
 function parseLeave (room, by) {

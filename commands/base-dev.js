@@ -2,17 +2,45 @@
 	Development Commands
 */
 
+var forever = require('forever');
+
 exports.commands = {
+	"silentjs": "js",
+	"sjs": "js",
 	"eval": 'js',
 	js: function (arg, by, room, cmd) {
 		if (!this.isExcepted) return false;
 		this.sclog();
 		try {
-			var result = eval(arg.trim());
-			this.say(room, '``' + JSON.stringify(result) + '``');
+			let result = eval(arg.trim());
+			let output = JSON.stringify(result, null, 2);
+			if (cmd === "sjs" || cmd === "silentjs")
+				return;
+			if (output)
+				return this.htmlReply(Tools.formatSourceAsHtml(output));
+			if (result === undefined)
+				return this.htmlReply(Tools.formatSourceAsHtml("undefined"));
+			if (result.toString)
+				return this.htmlReply(Tools.formatSourceAsHtml(result.toString()));
+			return this.htmlReply(Tools.formatSourceAsHtml("No stringify method for this data exists in base-dev.js. Please add one."));
 		} catch (e) {
 			this.say(room, e.name + ": " + e.message);
 		}
+	},
+
+	makegroupchat: function (arg, by, room, cmd) {
+		if (!this.isRanked('&')) return false;
+		if (!arg) arg = Tools.generateRandomNick(5);
+		Bot.say("oustaff", `/makegroupchat ${arg}`);
+		return this.reply(`<<groupchat-${toId(this.botName)}-${arg}>>`);
+	},
+
+	rejoin: function(arg, by, room, cmd) {
+		if (!this.isExcepted) return false;
+		let missingRooms = Config.rooms.filter( x => !Bot.rooms[x] );
+		if (missingRooms.length)
+			Bot.joinRooms(missingRooms);
+		return this.pmInfobox( JSON.stringify(missingRooms) );
 	},
 
 	send: function (arg, by, room, cmd) {
@@ -130,14 +158,14 @@ exports.commands = {
 				this.sclog();
 				var res = CommandParser.loadCommands(true) || [];
 				if (!res.length) {
-					return this.reply('Commands hotpatched');
+					return this.reply('Commands reloaded');
 				}
 				return this.reply('Some command files crashed: ' + res.join(", "));
 			case 'features':
 				this.sclog();
 				var errs = reloadFeatures() || [];
 				if (!errs.length) {
-					return this.reply('Features hotpatched');
+					return this.reply('Features reloaded');
 				}
 				return this.reply('Some features crashed: ' + errs.join(", "));
 			case 'feature':
@@ -153,7 +181,7 @@ exports.commands = {
 						return this.reply("Error: Feature " + args[1] + " crashed");
 					}
 				} else {
-					return this.reply("Feature: " + args[1] + " hotpatched");
+					return this.reply("Feature: " + args[1] + " reloaded");
 				}
 				break;
 			case 'commandparser':
@@ -210,7 +238,7 @@ exports.commands = {
 			case 'languages':
 				this.sclog();
 				var _errs = Tools.loadTranslations(true) || [];
-				if (!_errs.length) return this.reply('Languages hotpatched');
+				if (!_errs.length) return this.reply('Languages reloaded');
 				this.reply('Some languages crashed: ' + _errs.join(", "));
 				break;
 			default:
@@ -273,26 +301,23 @@ exports.commands = {
 
 	forcekill: 'kill',
 	kill: function (arg, by, room, cmd) {
-		if (!this.isExcepted) return false;
-		if (cmd === "forcekill") {
-			this.sclog();
-			console.log('Forced Kill. By: ' + by);
-			process.exit();
-		} else {
-			if (!Settings.lockdown) return this.reply("To kill the process you must use ``" + this.cmdToken + "lockdown`` first");
-			for (var f in Features) {
-				if (typeof Features[f].readyToDie === "function") {
-					try {
-						var err = Features[f].readyToDie();
-						if (err) return this.reply("Feature \"" + f + "\" not ready | " + err + " | Use ``" + this.cmdToken + "forcekill`` if you want to kill the process anyway");
-					} catch (e) {
-						return this.reply("Feature \"" + f + "\" not ready | " + sys.inspect(e) + " | Use ``" + this.cmdToken + "forcekill`` if you want to kill the process anyway");
-					}
-				}
-			}
-			this.sclog();
-			console.log('Kill. By: ' + by);
-			process.exit();
+		if ( !this.isExcepted && ( room !== "oustaff" || !this.isRanked("#", "oustaff") ) ) return false;
+		console.log('Forced Exit. By: ' + by);
+		try {
+			forever.stop('index.js');
+			console.log('Killed by: ' + by);
+		} catch (e) {
+			this.reply('Forever module not found.');
+		}
+	},
+	restart: function (arg, by, room, cmd) {
+		this.sclog();
+		if (!this.isExcepted && room !== "oustaff") return false;
+		try {
+			forever.restart('index.js');
+			console.log('Restarted by: ' + by);
+		} catch (e) {
+			this.reply('Forever module not found.');
 		}
 	}
 };
