@@ -15,7 +15,7 @@ Basic features and some information about the bot.
  - `time` - Current time for Bot
  - `uptime` - Time since the last bot restart
  - `seen [user]` - Latest data from an user
- - `alts [user]` - List of known alts of an user (Alts detedted from namechanges)
+ - `alts [user]` - List of known alts of an user (Alts detected from namechanges), usable by % and higher
  - `say [text]` - Force to say something
 
 Dynamic Commands
@@ -56,7 +56,7 @@ Commands for getting pokemon info:
  - `boosting [poke]` - Get boosting moves
  - `recovery [poke]` - Get recovery moves
  - `hazards [poke]` - Get hazards moves
- 
+
 Smogon-related commands:
 
  - `usagelink` - Get a link to Smogon official usage stats
@@ -148,7 +148,7 @@ Moderation
  - `joinphrase set, [user], [phrase]` - Set a joinphrase
  - `joinphrase delete, [user]` - Remove a joinphrase
  - `vjf` - View joinphrases list
- 
+
 **Note:** Excepted users can use moderation commands in format `command [roomid]Arguments` to set moderation through PM or other room. Example: `ab [lobby]spammer1, spammer2`
 
 Battle
@@ -209,11 +209,23 @@ Commands for leaderboards system
  - `top` - View the Top5 in the leaderboard
  - `official` - Make a tournament in progress official (to be counted, see config)
  - `unofficial` - Make a tournament in progress unofficial
+ - `include` - Count the score of the current tour, if it wouldn't already. Not applicable if room uses officials instead.
+ - `exclude` - Do not count the score of the current tour, if it would. Not applicable if room uses officials instead.
+ - `board` - Shows the leaderboard htmltable
  - `leaderboards table, [room]` - Upload the leaderboard table to Hastebin
+ - `leaderboards htmltable, [room], [size], [unprocessed]` - Shows a table of the leaderboard, formatted with HTML
+ - `leaderboards addpoints [user], [points], [room]` - Add unprocessed points to a user
+ - `leaderboards addtourdata [hastebin link]` - Add points to the leaderboard based on the tournament state in the hastebin, should always be the final update state of a tournament
+ - `leaderboards removetourdata [hastebin link]` - Remove points from the leaderboard based on the tournament state in the hastebin, should always be the final update state of a tournament
+ - `leaderboards merge [main], [alt], [room]` - Merge the score of two different names, values from alt are added to main
+ - `leaderboards delete [user], [room]` - Remove a name from the leaderboard, the score for that name is deleted
+ - `leaderboards filter [add/remove/view], [tier1], [tier2], [tier3]...` - Filtered tiers will never count for the leaderboard, even if all tours usually count
  - `leaderboards reset, [room]` - Reset leaderboards data
  - `leaderboards setconfig, [room], on, [Win points], [Finalist], [SemiFinalist], [Battle win points], [official/all]` - Activate and set leaderboards configuration
  - `leaderboards setconfig, [room], off` - Disable leaderboards system.
  - `leaderboards viewconfig, [room]` - View leaderboards configuration
+ - `leaderboards on [room]` - Enable leaderboards with default settings, processed scores are balanced based on the default settings
+ - `leaderboards off [room]` - Disable leaderboards
  - `leaderboards reset, [room]` - Reset leaderboards data
 
 Games
@@ -236,7 +248,7 @@ General commands for managing games:
  - `g [word]` - To guess the words
  - `view` - To view the game status
  - `end` - To force end the game
- 
+
 **Trivia**. Arguments: games (max number of rounds), points (number of ponts for winning), time (time to answer in seconds). Commands:
 
  - `ta [answer]` - To answer the questions
@@ -258,7 +270,7 @@ General commands for managing games:
  - `g [pokemon]` - To guess the pokemon
  - `view` - To view the game status
  - `end` - To force end the game
- 
+
 **Rock, paper, scissors**. Single command game: `rps [rock/paper/scissors]`
 
 **Ambush**. Arguments: roundtime (time per round). Commands:
@@ -313,3 +325,54 @@ Developing commands for GroupChats feature
 
  - `ignoregroupchat [groupchat]` - temporarily ignore a groupchat (to leave a groupchat). Then you must edit the config to make it permanent
  - `unignoregroupchat [groupchat]` - unignore a groupchat
+
+Auctions
+------------
+
+- `makeauction [name], [startmoney]` - Creates a new auction with chosen name, startmoney is optional. If used by a room owner it is automatically bound to the current room
+
+Auction owner commands
+If the auction is not bound the name of the auction will need to be included between `auction` and the command.
+
+- `auction delete` - Delete auction
+- `auction bind` - Bind auction to current room
+- `auction unbind` - Unbind auction from current room
+- `auction settype [auction/draft]` - Set the type of the auction, draft does not use money
+- `auction minplayers [number]` - Set the minimum amount of players needed
+- `auction maxplayers [number]` - Set the maximum amount of players, used in draft
+- `auction minbid [number]` - Lowest allowed bid, also the default bid when a nomination is made
+- `auction bidtimer [Full time], [Warning time]` - Set the amount of time allowed for each bid (when the timer reaches 0 last bid gets the nominated player)
+- `auction bidtimer off` - Turn off the bidding timer, not recommended for an auction type
+- `auction nomtimer [Full time], [Warning time]` - Set the amount of time allowed to make a nomination
+- `auction nomtimer off` - Turn off the nomination timer
+- `auction addowners [Owner1], [Owner2]...` - Adds additional owners to the auction
+- `auction addteams [Team1]:[Manager1] ; [Team2]:[Manager2]...` - Adds teams to the auction
+- `auction addmanagers [Team1]:[Manager1], [Manager2] ; [Team2]:[Manager3]...` - Adds managers to teams
+- `auction addplayers [pastebin/hastebin link]` - Replaces the pool with the players from the pastebin, the format is either 1 name per row or according to the example (from spl) format here: https://pastebin.com/raw/jPTbJBva (the first row must not have a player)
+- `auction addplayer [Name]` - Add a lone player to the pool
+- `auction addcredits [Amount], [Team1], [Team2]...` - Add credits to each specified team
+- `auction trade [Team]:[Player], [Credits]` - Moves player to the specified team in exchange for credits, the credits are added to the players original team
+- `auction suspendteam [Team]` - Suspends the specified team, making them unable to continue in the auction
+- `auction unsuspendteam [Team]` - Unsuspends the specified team, enabling them to participate in the auction
+- `auction assingplayers [Team]:[Player1], [Player2]...` - Moves players from the player pool to a team
+- `auction report` - Get a hastebin with the auction object
+- `auction run` - Start or resume the auction
+- `auction allownom [Team]` - Moves forward in the nomination order until it is the specified team's turn
+- `auction stop` - Stop a running auction, can be resumed
+- `auction stopnom` - Stop the current nomination
+- `auction undo` - Undo the last purchase, returns the auction to the state right after the purchase before the most recent one
+- `auction reset` - Reset the auction, all players are moved back to the player pool and all teams are given the starting credits
+- `auction hardreset` - In addition to doing what reset does, it also removes all managers
+
+Auction manager commands
+
+- `pick [Name]` - Pick a player, can only be used in a draft
+- `nom [Name]` - Nominate a player, can only be used in an auction
+- `bid [Amount]` - Bids on the current nomination, bids need to be multiples of 500, if the bid is less than 500 it will attempt to multiply the amount by 1000. Can also be used with `.[amount]`
+- `pricelist` - Get a pricelist of all players that have been bought
+
+Usable by anyone
+
+- `auction team [Name]` - Information about a team
+- `auction info` - Information about all teams
+- `auction players` - Get a hastebin with the players left in the pool
